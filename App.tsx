@@ -34,14 +34,14 @@ const App = () => {
       setIsLoading(true);
       setError(null);
 
-      // Timeout de segurança: 15s para conexões lentas
+      // Timeout de segurança: 20s para conexões lentas
       const timeout = setTimeout(() => {
         if (!cancelled) {
-          console.warn('Supabase demorou demais.');
-          setError('O servidor demorou muito para responder. Verifique sua conexão.');
+          console.warn('Supabase demorou demais. Permitindo login local.');
+          // Não bloqueia mais o app — apenas libera a tela de login
           setIsLoading(false);
         }
-      }, 15000);
+      }, 20000);
 
       try {
         const loaded = await loadData();
@@ -57,7 +57,8 @@ const App = () => {
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
         if (!cancelled) {
-          setError('Não foi possível carregar os dados. Verifique a conexão com a internet.');
+          // Não bloqueia o app — apenas libera o loading para mostrar o login
+          console.warn('Dados não carregados. Login de emergência disponível (ADM001).');
         }
       } finally {
         clearTimeout(timeout);
@@ -81,33 +82,39 @@ const App = () => {
     const inputId = (form.elements.namedItem('username') as HTMLInputElement).value.trim();
     const inputPassword = (form.elements.namedItem('password') as HTMLInputElement).value.trim();
 
-    const found = data.users.find(u => u.id === inputId || u.name.toLowerCase().includes(inputId.toLowerCase()));
-
-    // Admin Master fallback (if no users loaded or specific emergency code)
-    if (inputId === 'ADM001' && (!found || !found.password)) {
-      // Allow legacy/emergency login if no password set in DB yet
-    } else if (found) {
-      // If user has a password set, verify it
-      if (found.password && found.password !== inputPassword) {
-        alert('Senha incorreta!');
-        return;
-      }
-      // If user has NO password set, allow login (legacy support) but maybe warn?
+    // Modo offline / emergência: quando não há usuários carregados do Supabase
+    if (data.users.length === 0) {
+      const emergencyAdmin: User = { id: 'ADM001', name: 'Administrador', role: 'ADMIN' };
+      setUser(emergencyAdmin);
+      setSession(emergencyAdmin);
+      return;
     }
 
-    const adminFallback = data.users.find(u => u.role === 'ADMIN') || data.users[0];
-    // Se não há dados do Supabase, cria um usuário admin local de emergência
-    const emergencyAdmin = { id: 'ADM001', name: 'Administrador', role: 'ADMIN' as const };
+    const found = data.users.find(u => u.id === inputId || u.name.toLowerCase().includes(inputId.toLowerCase()));
 
-    const loginUser = found || adminFallback || emergencyAdmin;
+    // Login de emergência ADM001 sempre funciona
+    if (!found && (inputId === 'ADM001' || inputId === '')) {
+      const adminFallback = data.users.find(u => u.role === 'ADMIN') || data.users[0];
+      const emergencyAdmin: User = { id: 'ADM001', name: 'Administrador', role: 'ADMIN' };
+      const loginUser = adminFallback || emergencyAdmin;
+      setUser(loginUser);
+      setSession(loginUser);
+      return;
+    }
 
-    if (found && found.password && found.password !== inputPassword) {
+    if (!found) {
+      alert('Usuário não encontrado. Tente ADM001.');
+      return;
+    }
+
+    // Se tem senha, verificar
+    if (found.password && found.password !== inputPassword) {
       alert('Senha incorreta!');
       return;
     }
 
-    setUser(loginUser);
-    setSession(loginUser);
+    setUser(found);
+    setSession(found);
   };
 
   const handleLogout = () => {
@@ -281,6 +288,11 @@ const App = () => {
           <div className="mt-6 text-center text-xs text-gray-600">
             <p>Dica: Use "ADM001" ou deixe vazio para entrar como Demo</p>
           </div>
+          {data.users.length === 0 && (
+            <div className="mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-center">
+              <p className="text-yellow-400 text-xs">⚠️ Modo offline — banco não conectado. Use <strong>ADM001</strong> para entrar.</p>
+            </div>
+          )}
         </div>
       </div>
     );
