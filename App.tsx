@@ -276,6 +276,7 @@ const App = () => {
             <div>
               <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Senha</label>
               <input
+                name="password"
                 type="password"
                 placeholder="••••••"
                 className="w-full mt-1 bg-dark-900 border border-white/10 rounded-lg p-3 text-gray-200 focus:border-gold-500 outline-none transition-colors"
