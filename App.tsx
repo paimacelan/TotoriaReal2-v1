@@ -5,7 +5,8 @@ import {
   saveStudent, deleteStudent, getStudentById,
   saveUser, deleteUser,
   saveAttendance, deleteAttendance,
-  getSession, setSession
+  getSession, setSession,
+  logAccess
 } from './services/dataService';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -87,6 +88,7 @@ const App = () => {
       const emergencyAdmin: User = { id: 'ADM001', name: 'Administrador', role: 'ADMIN' };
       setUser(emergencyAdmin);
       setSession(emergencyAdmin);
+      logAccess(emergencyAdmin, 'login');
       return;
     }
 
@@ -99,6 +101,7 @@ const App = () => {
       const loginUser = adminFallback || emergencyAdmin;
       setUser(loginUser);
       setSession(loginUser);
+      logAccess(loginUser, 'login');
       return;
     }
 
@@ -115,9 +118,11 @@ const App = () => {
 
     setUser(found);
     setSession(found);
+    logAccess(found, 'login');
   };
 
   const handleLogout = () => {
+    if (user) logAccess(user, 'logout');
     setUser(null);
     setSession(null);
   };

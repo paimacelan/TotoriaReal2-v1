@@ -281,3 +281,20 @@ export const setSession = (user: User | null) => {
     localStorage.removeItem(SESSION_KEY);
   }
 };
+
+// ─── Log de acesso (login / logout) ──────────────────────────────────────────
+
+export const logAccess = (user: User, action: 'login' | 'logout'): void => {
+  // Fire-and-forget: não bloqueia a UI em caso de falha
+  supabase.from('access_logs').insert({
+    user_id: user.id,
+    user_name: user.name,
+    role: user.role,
+    action,
+    logged_at: new Date().toISOString(),
+    user_agent: navigator.userAgent.substring(0, 250),
+  }).then(({ error }) => {
+    if (error) console.warn('Falha ao registrar log de acesso:', error.message);
+  });
+};
+

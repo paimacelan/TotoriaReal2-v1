@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Attendance, Student, User, DIMENSIONS } from '../types';
-import { Plus, Trash2, Calendar, Download, Search, Printer } from 'lucide-react';
+import { Plus, Trash2, Calendar, Download, Search, Printer, UserSearch, Pencil } from 'lucide-react';
+import { StudentAttendancePrint } from './StudentAttendancePrint';
 
 interface AttendanceManagerProps {
   students: Student[];
@@ -13,6 +14,8 @@ interface AttendanceManagerProps {
 
 export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, tutors, currentUser, attendances, onSave, onDelete }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
   const [filterStudentName, setFilterStudentName] = useState('');
@@ -24,6 +27,30 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, 
     notes: ''
   });
 
+  // Verificar se o usuário tem permissão para editar/excluir um atendimento
+  const canEdit = (att: Attendance) =>
+    currentUser.role === 'ADMIN' || att.tutorId === currentUser.id;
+
+  const handleEdit = (att: Attendance) => {
+    setEditingId(att.id);
+    setFormData({
+      id: att.id,
+      studentId: att.studentId,
+      date: att.date,
+      dimension: att.dimension,
+      subject: att.subject,
+      notes: att.notes,
+    });
+    setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelForm = () => {
+    setIsFormOpen(false);
+    setEditingId(null);
+    setFormData({ date: new Date().toISOString().split('T')[0], dimension: 'Acadêmica', subject: '', notes: '' });
+  };
+
   const handleSubmit = () => {
     if (!formData.studentId || !formData.date || !formData.subject) {
       alert("Preencha os campos obrigatórios");
@@ -31,24 +58,37 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, 
     }
 
     const student = students.find(s => s.id === formData.studentId);
-    // Admin can be tutor, or logged in tutor
-    const tutor = tutors.find(t => t.id === currentUser.id) || currentUser;
 
-    const newRecord: Attendance = {
-      id: `ATD${Date.now()}`,
-      studentId: formData.studentId,
-      studentName: student?.name || 'Desconhecido',
-      tutorId: currentUser.id,
-      tutorName: currentUser.name,
-      date: formData.date,
-      dimension: formData.dimension as any,
-      subject: formData.subject,
-      notes: formData.notes || ''
-    };
+    if (editingId) {
+      // Modo edição: preserva tutorId/tutorName originais
+      const original = attendances.find(a => a.id === editingId)!;
+      const updated: Attendance = {
+        ...original,
+        studentId: formData.studentId!,
+        studentName: student?.name || original.studentName,
+        date: formData.date!,
+        dimension: formData.dimension as any,
+        subject: formData.subject!,
+        notes: formData.notes || '',
+      };
+      onSave(updated);
+    } else {
+      // Modo criação
+      const newRecord: Attendance = {
+        id: `ATD${Date.now()}`,
+        studentId: formData.studentId!,
+        studentName: student?.name || 'Desconhecido',
+        tutorId: currentUser.id,
+        tutorName: currentUser.name,
+        date: formData.date!,
+        dimension: formData.dimension as any,
+        subject: formData.subject!,
+        notes: formData.notes || ''
+      };
+      onSave(newRecord);
+    }
 
-    onSave(newRecord);
-    setIsFormOpen(false);
-    setFormData({ date: new Date().toISOString().split('T')[0], dimension: 'Acadêmica', subject: '', notes: '' });
+    handleCancelForm();
   };
 
   const filteredAttendances = attendances.filter(a => {
@@ -102,7 +142,9 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, 
       {/* Form */}
       {isFormOpen && (
         <div className="glass-panel p-6 rounded-xl border border-gold-500/30 no-print bg-white dark:bg-transparent shadow-sm dark:shadow-none">
-          <h3 className="text-lg font-semibold text-gold-600 dark:text-gold-400 mb-4">Novo Registro</h3>
+          <h3 className="text-lg font-semibold text-gold-600 dark:text-gold-400 mb-4">
+            {editingId ? '✏️ Editando Atendimento' : 'Novo Registro'}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-500 uppercase font-bold">Aluno</label>
@@ -162,8 +204,10 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, 
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={() => setIsFormOpen(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-4">Cancelar</button>
-            <button onClick={handleSubmit} className="bg-gold-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition-colors">Salvar</button>
+            <button onClick={handleCancelForm} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-4">Cancelar</button>
+            <button onClick={handleSubmit} className="bg-gold-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition-colors">
+              {editingId ? 'Salvar Edição' : 'Salvar'}
+            </button>
           </div>
         </div>
       )}
@@ -194,8 +238,16 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, 
 
           {/* Buttons */}
           <div className="flex gap-2">
-            <button onClick={handlePrint} className="flex items-center gap-2 text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-white/20 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-sm transition-colors" title="Imprimir">
-              <Printer size={18} /> <span className="hidden sm:inline">Imprimir</span>
+            <button
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gold-500 hover:bg-gold-400 text-black font-semibold rounded-lg text-sm transition-all shadow shadow-gold-500/20"
+              title="Imprimir atendimentos de um aluno"
+            >
+              <UserSearch size={16} />
+              <span className="hidden sm:inline">Imprimir por Aluno</span>
+            </button>
+            <button onClick={handlePrint} className="flex items-center gap-2 text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-white/20 px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-sm transition-colors" title="Imprimir tudo">
+              <Printer size={18} /> <span className="hidden sm:inline">Imprimir Tudo</span>
             </button>
             <button onClick={generateTXT} className="flex items-center gap-2 text-gold-600 dark:text-gold-400 border border-gold-500/20 px-3 py-2 rounded hover:bg-gold-50 dark:hover:bg-gold-500/10 text-sm transition-colors" title="Exportar TXT">
               <Download size={18} /> <span className="hidden sm:inline">TXT</span>
@@ -227,15 +279,42 @@ export const AttendanceManager: React.FC<AttendanceManagerProps> = ({ students, 
                   <p className="text-sm text-gray-600 dark:text-gray-500 mt-2 italic print:text-gray-600">"{att.notes}"</p>
                   <p className="text-xs text-gray-500 dark:text-gray-600 mt-2 print:block hidden">Tutor: {att.tutorName}</p>
                 </div>
-                <button onClick={() => onDelete(att.id)} className="text-gray-400 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors no-print">
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex items-center gap-1 no-print">
+                  {canEdit(att) && (
+                    <button
+                      onClick={() => handleEdit(att)}
+                      title="Editar atendimento"
+                      className="p-1.5 rounded text-gray-400 hover:text-gold-500 dark:text-gray-600 dark:hover:text-gold-400 hover:bg-gold-500/10 transition-all"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                  )}
+                  {canEdit(att) && (
+                    <button
+                      onClick={() => onDelete(att.id)}
+                      title="Excluir atendimento"
+                      className="p-1.5 rounded text-gray-400 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
           {filteredAttendances.length === 0 && <p className="text-center text-gray-500 py-4">Nenhum atendimento encontrado.</p>}
         </div>
       </div>
+
+      {/* Modal de impressão por aluno */}
+      {isPrintModalOpen && (
+        <StudentAttendancePrint
+          students={students}
+          attendances={attendances}
+          tutors={tutors}
+          onClose={() => setIsPrintModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

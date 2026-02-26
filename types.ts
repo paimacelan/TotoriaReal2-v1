@@ -16,7 +16,7 @@ export interface Attendance {
   tutorId: string;
   tutorName: string;
   date: string; // ISO Date
-  dimension: 'Pessoal' | 'Acadêmica' | 'Profissional';
+  dimension: 'Cognitiva' | 'Socioemocional' | 'Comportamental' | 'Pessoal' | 'Acadêmica' | 'Profissional';
   subject: string;
   notes: string;
 }
@@ -76,6 +76,6 @@ export const SERIES_OPTIONS = [
 
 export const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
-export const DIMENSIONS = ['Pessoal', 'Acadêmica', 'Profissional'];
+export const DIMENSIONS = ['Cognitiva', 'Socioemocional', 'Comportamental', 'Pessoal', 'Acadêmica', 'Profissional'];
 
 export const LIVING_OPTIONS = ['Pais', 'Mãe', 'Pai', 'Avós', 'Outros'];

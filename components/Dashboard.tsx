@@ -28,12 +28,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, tutors, attendan
     fill: COLORS[index % COLORS.length]
   })).filter(t => t.count > 0);
 
-  // Chart Data: Dimensions
-  const dimensionStats = [
-    { name: 'Pessoal', value: attendances.filter(a => a.dimension === 'Pessoal').length, color: '#D4A32B' }, // Gold
-    { name: 'Acadêmica', value: attendances.filter(a => a.dimension === 'Acadêmica').length, color: '#E07C56' }, // Copper
-    { name: 'Profissional', value: attendances.filter(a => a.dimension === 'Profissional').length, color: '#64748B' }, // Slate
-  ].filter(d => d.value > 0);
+  // Chart Data: Dimensions (todas as 6 dimensões suportadas)
+  const ALL_DIMENSIONS = [
+    { name: 'Cognitiva', color: '#D4A32B' }, // Gold
+    { name: 'Socioemocional', color: '#E07C56' }, // Copper
+    { name: 'Comportamental', color: '#64748B' }, // Slate
+    { name: 'Pessoal', color: '#8B5CF6' }, // Purple
+    { name: 'Acadêmica', color: '#10B981' }, // Emerald
+    { name: 'Profissional', color: '#3B82F6' }, // Blue
+  ];
+  const dimensionStats = ALL_DIMENSIONS
+    .map(d => ({ ...d, value: attendances.filter(a => a.dimension === d.name).length }))
+    .filter(d => d.value > 0);
 
   // Top 20 Students
   const topStudents = [...students].map(s => ({
